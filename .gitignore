@@ -1,0 +1,11 @@
+__pycache__/
+
+# State file
+_state.yaml
+
+# Helpers
+adjust.py
+measure.py
+
+# config
+config.yaml

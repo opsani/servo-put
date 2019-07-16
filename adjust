@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+
+import adjust
+import state_store
+
+import yaml
+
+DRIVER_NAME = "statestore"
+DRIVER_VERSION = "1.0.1"
+DRIVER_DESC = "An Optune adjust driver that stores adjust state and returns it back on query"
+CFG_FILE = "./config.yaml"
+
+REQUIRED_SETTINGS_FIELDS = [ "value", "step", "type" ]
+
+class StatestoreAdjust(adjust.Adjust):
+
+    def _parse_cfg(self):
+        try:
+            f = open(CFG_FILE)
+            d = yaml.load(f)
+        except yaml.error.YAMLError as e:
+            raise Exception("syntax error in {}: {}".format(CFG_FILE, str(e)))
+
+        # valcheck
+        assert(DRIVER_NAME in d), \
+            "Missing driver configuration: missing {} section".format(
+                DRIVER_NAME)
+
+        cfg = d[DRIVER_NAME]
+
+        assert "components" in cfg, \
+            "components missing from driver configuration"
+
+        for c_name, c_data in cfg["components"].items():
+
+            assert "settings" in c_data, \
+                "settings missing from driver configuration for component {}".format(
+                    c_name)
+
+            for s_name, s_data in c_data["settings"].items():
+
+                for s in REQUIRED_SETTINGS_FIELDS:
+                    assert s in s_data, \
+                        "missing required key '{}' from driver configuration for setting {}, component {}".format(
+                            s, s_name, c_name)
+
+        return cfg
+
+
+    def query(self):
+
+        cfg = self._parse_cfg()
+
+        q = {
+            "components": cfg["components"]
+        }
+        if "annotations" in cfg:
+            q["annotations"] = cfg["annotations"]
+
+        # Get state, merge
+        state = state_store.get_state()
+
+        if state:
+            # Update 'value' key from state if present
+            for c_name, c_data in cfg["components"].items():
+                for s_name, s_data in c_data["settings"].items():
+                    try:
+                        s_data["value"] = state["components"][c_name]\
+                            ["settings"][s_name]["value"]
+                    except:
+                        pass
+
+        return q
+
+    def adjust(self, data):
+
+        assert ("application" in data), \
+            "Invalid input: missing application key"
+
+        # Store application key in state
+        # This may raise an exception
+        state_store.set_state(data["application"])
+
+
+# initialize and run
+if __name__ == "__main__":
+    driver = StatestoreAdjust(
+        "{} {}".format(DRIVER_NAME, DRIVER_VERSION),
+        DRIVER_DESC,
+        supports_cancel = True,
+        progress_interval = None)
+
+    driver.run()
