@@ -47,7 +47,7 @@ class StatestoreAdjust(adjust.Adjust):
 
 
     def query(self):
-        pass
+        return { "application" : {} }
 
     def adjust(self, data):
 
