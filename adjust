@@ -58,7 +58,7 @@ class StatestoreAdjust(adjust.Adjust):
         # Store application key in state
         # This may raise an exception
         if value:
-            requests.put('http://localhost:8080/set/' + value)
+            requests.put('http://localhost:8080/set/' + str(value))
 
 
 # initialize and run
