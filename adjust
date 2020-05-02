@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
 import adjust
-import state_store
-
 import yaml
+import requests
 
 DRIVER_NAME = "statestore"
 DRIVER_VERSION = "1.0.1"
@@ -48,38 +47,18 @@ class StatestoreAdjust(adjust.Adjust):
 
 
     def query(self):
-
-        cfg = self._parse_cfg()
-
-        q = {
-            "components": cfg["components"]
-        }
-        if "annotations" in cfg:
-            q["annotations"] = cfg["annotations"]
-
-        # Get state, merge
-        state = state_store.get_state()
-
-        if state:
-            # Update 'value' key from state if present
-            for c_name, c_data in cfg["components"].items():
-                for s_name, s_data in c_data["settings"].items():
-                    try:
-                        s_data["value"] = state["components"][c_name]\
-                            ["settings"][s_name]["value"]
-                    except:
-                        pass
-
-        return q
+        pass
 
     def adjust(self, data):
 
         assert ("application" in data), \
             "Invalid input: missing application key"
 
+        value = data['application']['components'].get('app', {}).get('settings', {}).get('key_size', {}).get('value', None)
         # Store application key in state
         # This may raise an exception
-        state_store.set_state(data["application"])
+        if value:
+            requests.put('http://localhost:8080/set/' + value)
 
 
 # initialize and run
